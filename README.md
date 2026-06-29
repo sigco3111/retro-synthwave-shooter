@@ -2,7 +2,7 @@
 
 > 80년대 레트로 신스웨이브(Synthwave) 스타일의 우주 비행 슈팅 게임. 외부 이미지 에셋 없이 자바스크립트 드로잉 함수만으로 보라색 격자무늬 지평선, 스크린 쉐이크, 파티클 폭발 이펙트까지 단일 HTML에 담은 브라우저 아케이드 슈팅 게임.
 
-![status](https://img.shields.io/badge/status-In_Development-FF6B35?style=flat-square)
+![status](https://img.shields.io/badge/status-Live-22C55E?style=flat-square)
 ![tech](https://img.shields.io/badge/HTML5_Canvas-Vanilla_JS-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![license](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)
 
@@ -10,12 +10,12 @@
 
 ## 🎬 라이브 데모 (Live Demo)
 
-> 게임 코드는 OpenCode CLI로 진행 중입니다. 푸시 후 자동으로 Vercel 배포가 활성화됩니다.
+> 브라우저에서 바로 플레이 가능. GitHub 푸시 시 Vercel 자동 배포.
 
 | | |
 |---|---|
 | ![Demo](https://img.shields.io/badge/Live-Demo-7C3AED?style=for-the-badge&logo=vercel&logoColor=white) | [![Repo](https://img.shields.io/badge/GitHub-sigco3111%2Fretro--synthwave--shooter-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sigco3111/retro-synthwave-shooter) |
-| ![Status](https://img.shields.io/badge/Status-In_Development-FF6B35?style=flat-square) | ![Stack](https://img.shields.io/badge/Stack-HTML5_Canvas-F7DF1E?style=flat-square&logo=javascript&logoColor=black) |
+| ![Status](https://img.shields.io/badge/Status-Live-22C55E?style=flat-square) | ![Stack](https://img.shields.io/badge/Stack-HTML5_Canvas-F7DF1E?style=flat-square&logo=javascript&logoColor=black) |
 | ![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square) | ![Deps](https://img.shields.io/badge/Dependencies-0-9CA3AF?style=flat-square) |
 
 ### 🎮 조작 키
@@ -85,7 +85,7 @@
 
 ---
 
-## ✨ Features (예정)
+## ✨ Features
 
 - 🌌 **무한 스크롤 보라색 격자무늬 지평선** — 2D 원근 변환으로 3D 효과 모방
 - 💥 **스크린 쉐이크(Screen Shake)** — 적 격추 시 화면 흔들림
@@ -105,7 +105,7 @@
 ### 로컬 실행
 
 ```bash
-# 게임 완성 후:
+# 파일 열기:
 open index.html
 
 # 또는 로컬 서버 (권장)
