@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Retro Synthwave Shooter — 80s arcade space shooter built with HTML5 Canvas. Single file. Zero dependencies." />
+<title>RETRO SYNTHWAVE SHOOTER — Neon Skyline Arcade</title>
+<style>
+  /* =============================================================
+     PAGE CHROME — synthwave title bar + centered canvas
+     ============================================================= */
+  :root {
+    --neon-pink:    #ff2bd1;
+    --neon-magenta: #ff00ff;
+    --neon-cyan:    #00f5ff;
+    --neon-purple:  #8b00ff;
+    --neon-orange:  #ff8a00;
+    --deep-night:   #05001a;
+    --midnight:     #0a0033;
+    --grid-line:    #ff2bd1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 100%, #1a0040 0%, #0a0033 45%, #05001a 100%);
+    color: var(--neon-cyan);
+    font-family: "Courier New", "Consolas", monospace;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 14px 8px;
+  }
+
+  /* Page title — displayed above the canvas only on the title screen */
+  #page-title {
+    font-size: clamp(14px, 2vw, 22px);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--neon-cyan);
+    text-shadow:
+      0 0 4px var(--neon-cyan),
+      0 0 12px var(--neon-cyan),
+      0 0 24px rgba(0, 245, 255, 0.6);
+    margin-bottom: 10px;
+    text-align: center;
+    transition: opacity 0.4s;
+  }
+  #page-title.hidden { opacity: 0; pointer-events: none; }
+
+  /* Canvas frame — neon border with subtle glow */
+  #game-frame {
+    position: relative;
+    border: 2px solid var(--neon-pink);
+    border-radius: 4px;
+    box-shadow:
+      0 0 12px rgba(255, 43, 209, 0.8),
+      0 0 28px rgba(255, 0, 255, 0.45),
+      inset 0 0 24px rgba(255, 43, 209, 0.18);
+    background: #000;
+    line-height: 0;
+  }
+
+  canvas {
+    display: block;
+    background: #000;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+  }
+
+  /* HUD footer — below canvas */
+  #footer {
+    margin-top: 10px;
+    font-size: clamp(10px, 1.3vw, 14px);
+    letter-spacing: 0.18em;
+    color: rgba(0, 245, 255, 0.55);
+    text-align: center;
+    text-transform: uppercase;
+  }
+  #footer kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin: 0 2px;
+    border: 1px solid rgba(0, 245, 255, 0.4);
+    border-radius: 3px;
+    background: rgba(0, 245, 255, 0.08);
+    color: var(--neon-cyan);
+    font-family: inherit;
+  }
+
+  /* Audio-toggle button */
+  #audio-toggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    background: rgba(255, 0, 255, 0.12);
+    color: var(--neon-magenta);
+    border: 1px solid rgba(255, 0, 255, 0.5);
+    padding: 6px 10px;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    text-transform: uppercase;
+    z-index: 50;
+    transition: background 0.15s, color 0.15s;
+  }
+  #audio-toggle:hover {
+    background: rgba(255, 0, 255, 0.25);
+    color: #fff;
+  }
+  #audio-toggle.muted {
+    color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  /* ============================================
+     DIFFICULTY CHIPS — overlay on title screen
+     ============================================ */
+  #game-frame { position: relative; }
+
+  #difficulty {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translate(-50%, 0);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+    pointer-events: auto;
+    transition: opacity 0.35s, transform 0.35s;
+  }
+  #difficulty.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 14px);
+  }
+
+  .diff-chip {
+    background: rgba(5, 0, 26, 0.7);
+    border: 1.5px solid rgba(0, 245, 255, 0.45);
+    color: rgba(0, 245, 255, 0.85);
+    padding: 8px 14px;
+    border-radius: 3px;
+    font-family: "Courier New", "Consolas", monospace;
+    font-size: 12px;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s, color 0.15s, border-color 0.15s,
+                box-shadow 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .diff-chip:hover {
+    transform: translateY(-2px);
+    border-color: #ffe14a;
+    color: #ffe14a;
+    background: rgba(255, 225, 74, 0.10);
+  }
+  .diff-chip:focus { outline: none; }
+  .diff-chip.active {
+    background: rgba(255, 43, 209, 0.18);
+    /* color/border/glow come from JS so each preset uses its accent */
+  }
+  body.playing #difficulty,
+  body.paused #difficulty,
+  body.gameover #difficulty,
+  body.victory #difficulty { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<h1 id="page-title">&laquo; NEON SKYLINE &middot; RETRO SYNTHWAVE SHOOTER &raquo;</h1>
+
+<div id="game-frame">
+  <canvas id="game" width="960" height="600"></canvas>
+  <div id="difficulty" aria-label="Select difficulty">
+    <button class="diff-chip" data-diff="rookie">ROOKIE</button>
+    <button class="diff-chip" data-diff="normal">NORMAL</button>
+    <button class="diff-chip" data-diff="hard">HARD</button>
+    <button class="diff-chip" data-diff="insane">INSANE</button>
+  </div>
+</div>
+
+<div id="footer">
+  <kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> MOVE &nbsp;
+  <kbd>SPACE</kbd> FIRE &nbsp;
+  <kbd>P</kbd> PAUSE &nbsp;
+  <kbd>R</kbd> RESTART &nbsp;
+  <kbd>M</kbd> MUTE
+</div>
+
+<button id="audio-toggle" aria-label="Toggle audio">SOUND ON</button>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   ██████  ██   ██ ███████ ████████  █████  ████████ ███████
+   ██      ██   ██ ██         ██    ██   ██    ██    ██
+   ███████ ███████ █████      ██    ██████     ██    █████
+       ██ ██   ██ ██         ██    ██   ██    ██    ██
+   ██████ ██   ██ ███████    ██    ██   ██    ██    ███████
+             ██
+              SINGLE-FILE 80s ARCADE SHOOTER  ·  HTML5 CANVAS
+   ===================================================================== */
+
+/* ============================================================
+   1. CONFIG — colors, sizes, speeds, gameplay tuning
+   ============================================================ */
+const CFG = {
+  // Logical screen size — canvas is scaled to viewport via CSS while
+  // game logic runs in this fixed coordinate system.
+  W: 960,
+  H: 600,
+
+  // Synthwave palette
+  COLOR: {
+    bgSkyTop:    "#0a0033",
+    bgSkyBot:    "#1a0040",
+    grid:        "#ff2bd1",
+    gridHot:     "#00f5ff",
+    sunTop:      "#fff39b",
+    sunMid:      "#ff8a00",
+    sunBot:      "#ff2bd1",
+    sunBand:     "rgba(10, 0, 51, 0.85)",
+    mountain:    "#170033",
+    star:        "#ffffff",
+    starHot:     "#00f5ff",
+    player:      "#00f5ff",
+    playerEdge:  "#ffffff",
+    thrust:      "#ff8a00",
+    bullet:      "#00f5ff",
+    bulletEdge:  "#ffffff",
+    enemyBullet: "#ff2bd1",
+    text:        "#00f5ff",
+    textAlt:     "#ff2bd1",
+    uiPanel:     "rgba(255, 43, 209, 0.18)",
+    shield:      "#00f5ff",
+    health:      "#ff2bd1",
+    powerupM:    "#ffe14a",
+    powerupR:    "#ff5e3a",
+    powerupS:    "#7afcff",
+    boss:        "#ff00ff",
+    bossEdge:    "#ffe14a",
+  },
+
+  // Player tuning
+  PLAYER: {
+    W:           36,
+    H:           46,
+    BASE_SPEED:  320,
+    FIRE_COOLDN: 0.18,   // seconds between shots
+    RAPID_COOLDN: 0.08,  // powerup rapid
+    MAX_LIVES:   3,
+    INV_TIME:    1.4,    // damage invuln seconds
+  },
+
+  // Background
+  BG: {
+    GRID_HORIZON: 0.55,  // horizon Y as fraction of H
+    GRID_SPEED:   220,   // grid-line scroll speed (px/sec-ish)
+    GRID_LINES:   22,    // horizontal lines on ground plane
+    GRID_COLS:    24,    // vertical perspective columns
+    STAR_COUNT:   140,
+    SUN_X_FRAC:   0.5,   // sun horizontal center (fraction of W)
+    SUN_Y_FRAC:   0.40,  // sun vertical center
+    SUN_BANDS:    6,     // horizontal slits cut into sun
+  },
+
+  // Waves / difficulty
+  WAVE: {
+    ENEMIES_PER:  8,
+    INTER_DELAY:  2.0,
+    BOSS_EVERY:   5,
+    SPAWN_RATE:   0.75,  // avg enemies per second during wave
+  },
+
+  // Power-ups
+  POWER: {
+    MULTI_DUR:   8,
+    RAPID_DUR:   6,
+    SHIELD_DUR:  8,
+    DROP_CHANCE: 0.18,
+  },
+
+  // Screen shake
+  SHAKE: {
+    SMALL:  6,
+    MEDIUM: 12,
+    BIG:    22,
+    BOSS:   30,
+    DECAY:  4.0, // per second multiplier
+  },
+
+  // Difficulty presets. _diff() on Game returns one of these at runtime;
+  // every combat value should derive its tuning from the live preset so
+  // adjusting difficulty never requires touching gameplay code paths.
+  //   lives        - starting lives
+  //   playerSpd    - multiplier on player movement speed
+  //   playerCD     - multiplier on player fire cooldown (lower = faster)
+  //   enemySpd     - multiplier on enemy AI movement speed
+  //   enemyHp      - multiplier on enemy max HP
+  //   fireRate     - multiplier on enemy fire rate (lower CD = faster)
+  //   spawnRate    - multiplier on enemies-per-second spawn density
+  //   enemyBullet  - multiplier on enemy bullet speed
+  //   damageMul    - lives lost per hit (1 = normal, 2 = tanky mode)
+  //   bossEvery    - waves between bosses (3 = frequent, 6 = sparse)
+  //   bossHp       - multiplier on boss HP
+  //   bossBullet   - multiplier on boss bullet speed / count
+  //   scoreMul     - multiplier on every score gain
+  //   dropMul      - multiplier on power-up drop chance
+  //   musicBpm     - background music tempo (BPM)
+  //   label        - short display name
+  //   color        - accent color for HUD / chips
+  DIFFICULTY: {
+    rookie: {
+      lives: 4, playerSpd: 1.20, playerCD: 1.15,
+      enemySpd: 0.78, enemyHp: 0.6,
+      fireRate: 0.7,  spawnRate: 0.85, enemyBullet: 0.85,
+      damageMul: 1,   bossEvery: 6,  bossHp: 0.7, bossBullet: 0.9,
+      scoreMul: 0.75, dropMul: 1.4,  musicBpm: 80,
+      label: "ROOKIE",  color: "#7afcff",
+    },
+    normal: {
+      lives: 3, playerSpd: 1.0,  playerCD: 1.0,
+      enemySpd: 1.0,  enemyHp: 1.0,
+      fireRate: 1.0,  spawnRate: 1.0, enemyBullet: 1.0,
+      damageMul: 1,   bossEvery: 5,  bossHp: 1.0, bossBullet: 1.0,
+      scoreMul: 1.0,  dropMul: 1.0,  musicBpm: 100,
+      label: "NORMAL", color: "#00f5ff",
+    },
+    hard: {
+      lives: 3, playerSpd: 0.95, playerCD: 0.85,
+      enemySpd: 1.22, enemyHp: 1.4,
+      fireRate: 1.30, spawnRate: 1.20, enemyBullet: 1.18,
+      damageMul: 1,   bossEvery: 4,  bossHp: 1.5, bossBullet: 1.20,
+      scoreMul: 1.5,  dropMul: 0.85, musicBpm: 120,
+      label: "HARD",   color: "#ff8a00",
+    },
+    insane: {
+      lives: 2, playerSpd: 0.90, playerCD: 0.70,
+      enemySpd: 1.45, enemyHp: 2.0,
+      fireRate: 1.65, spawnRate: 1.45, enemyBullet: 1.35,
+      damageMul: 1,   bossEvery: 3,  bossHp: 2.2, bossBullet: 1.40,
+      scoreMul: 2.5,  dropMul: 0.6,  musicBpm: 140,
+      label: "INSANE", color: "#ff2bd1",
+    },
+  },
+
+  // Order in which chips appear on title screen
+  DIFF_ORDER: ["rookie", "normal", "hard", "insane"],
+};
+
+/* ============================================================
+   2. UTILITIES — generic helpers
+   ============================================================ */
+const TAU  = Math.PI * 2;
+const $    = (id) => document.getElementById(id);
+const rnd  = (min, max) => Math.random() * (max - min) + min;
+const irnd = (min, max) => Math.floor(rnd(min, max));
+const pick = (arr) => arr[irnd(0, arr.length)];
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, lo, hi) => v < lo ? lo : (v > hi ? hi : v);
+const sign  = (v) => v < 0 ? -1 : (v > 0 ? 1 : 0);
+function aabb(a, b) {
+  // Axis-aligned bounding-box collision
+  return (
+    a.x < b.x + b.w && a.x + a.w > b.x &&
+    a.y < b.y + b.h && a.y + a.h > b.y
+  );
+}
+
+/* ============================================================
+   3. AUDIO — minimalist Web Audio synth (procedural, no samples)
+   ============================================================ */
+class SynthAudio {
+  constructor() {
+    this.ctx   = null;
+    this.muted = false;
+    this.master = null;
+    this.musicOn = true;
+    this.musicTimer = 0;
+    this.musicBeat = 0;
+    this.bpm = 100; // updated by setMusicTempo() — higher = harder
+    this.musicPattern = [ // bassline notes (Hz) – looped with arp above
+      55, 55, 73, 55,  65, 65, 73, 55,
+      49, 49, 65, 55,  73, 73, 65, 55,
+    ];
+    this.arpNotes = [220, 277, 330, 415, 330, 277, 220, 165];
+  }
+  ensure() {
+    if (this.ctx) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    this.ctx = new Ctx();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.45;
+    this.master.connect(this.ctx.destination);
+  }
+  toggle() {
+    this.muted = !this.muted;
+    if (this.muted && this.master) this.master.gain.value = 0;
+    else if (this.master) this.master.gain.value = 0.45;
+    return this.muted;
+  }
+  resume() { if (this.ctx && this.ctx.state === "suspended") this.ctx.resume(); }
+
+  // ----- one-shot sound effects -----
+  laser(freq = 880) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.35, t + 0.13);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.18);
+  }
+  enemyLaser() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(330, t);
+    o.frequency.exponentialRampToValueAtTime(110, t + 0.22);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.15, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.26);
+  }
+  explosion(size = 1) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    // White-noise burst through low-pass filter
+    const dur = 0.45 * size;
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 1.4);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const flt = this.ctx.createBiquadFilter();
+    flt.type = "lowpass";
+    flt.frequency.setValueAtTime(1800, t);
+    flt.frequency.exponentialRampToValueAtTime(180, t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.5 * size, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(flt).connect(g).connect(this.master);
+    src.start(t);
+
+    // Sub-bass thump
+    const o = this.ctx.createOscillator();
+    const og = this.ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(40, t + 0.2);
+    og.gain.setValueAtTime(0.5, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    o.connect(og).connect(this.master);
+    o.start(t); o.stop(t + 0.25);
+  }
+  hit() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.07);
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.1);
+  }
+  powerup(kind = "m") {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const seq = kind === "r"
+      ? [523, 659, 784]   // rapid
+      : kind === "s"
+        ? [659, 784, 988] // shield
+        : [392, 523, 659, 784]; // multi
+    seq.forEach((f, i) => {
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = "triangle";
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.06);
+      g.gain.exponentialRampToValueAtTime(0.25, t + i * 0.06 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.06 + 0.18);
+      o.connect(g).connect(this.master);
+      o.start(t + i * 0.06); o.stop(t + i * 0.06 + 0.22);
+    });
+  }
+  death() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(440, t);
+    o.frequency.exponentialRampToValueAtTime(55, t + 1.2);
+    g.gain.setValueAtTime(0.4, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 1.25);
+  }
+  victory() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const seq = [523, 659, 784, 1046];
+    seq.forEach((f, i) => {
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = "square";
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.3, t + i * 0.12 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.12 + 0.3);
+      o.connect(g).connect(this.master);
+      o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.32);
+    });
+  }
+  // Procedural background music: square-wave arp + sine bass, looped
+  updateMusic(dt) {
+    if (!this.ctx || this.muted || !this.musicOn) return;
+    this.musicTimer += dt;
+    const beatDur = 60 / this.bpm; // current tempo
+    const eighth = beatDur / 2;
+    while (this.musicTimer >= eighth) {
+      this.musicTimer -= eighth;
+      this._playMusicStep(this.musicBeat);
+      this.musicBeat = (this.musicBeat + 1) % this.musicPattern.length;
+    }
+  }
+  // Adjust tempo (BPM) — used by difficulty presets
+  setMusicTempo(bpm) {
+    if (bpm == null) return;
+    this.bpm = clamp(bpm, 60, 200);
+  }
+  _playMusicStep(beat) {
+    const t = this.ctx.currentTime;
+    const bassHz = this.musicPattern[beat];
+    const arpHz  = this.arpNotes[beat % this.arpNotes.length];
+    // bass
+    const bo = this.ctx.createOscillator();
+    const bg = this.ctx.createGain();
+    bo.type = "sawtooth";
+    bo.frequency.value = bassHz;
+    bg.gain.setValueAtTime(0.0001, t);
+    bg.gain.exponentialRampToValueAtTime(0.08, t + 0.02);
+    bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+    bo.connect(bg).connect(this.master);
+    bo.start(t); bo.stop(t + 0.34);
+    // arp
+    const ao = this.ctx.createOscillator();
+    const ag = this.ctx.createGain();
+    ao.type = "square";
+    ao.frequency.value = arpHz;
+    ag.gain.setValueAtTime(0.0001, t);
+    ag.gain.exponentialRampToValueAtTime(0.05, t + 0.01);
+    ag.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    ao.connect(ag).connect(this.master);
+    ao.start(t); ao.stop(t + 0.2);
+  }
+}
+
+/* ============================================================
+   4. INPUT — keyboard state + a few discrete events
+   ============================================================ */
+class Input {
+  constructor(target) {
+    this.keys = Object.create(null);
+    this.events = []; // pressed-this-frame events (cleared each frame)
+    target.addEventListener("keydown", (e) => {
+      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key)) e.preventDefault();
+      if (!this.keys[e.code]) this.events.push({ type: "down", code: e.code });
+      this.keys[e.code] = true;
+      this.audio && this.audio.ensure(); // first key starts audio context
+      this.audio && this.audio.resume();
+    });
+    target.addEventListener("keyup", (e) => {
+      this.keys[e.code] = false;
+      this.events.push({ type: "up", code: e.code });
+    });
+    target.addEventListener("blur", () => {
+      this.keys = Object.create(null);
+    });
+  }
+  consume() { const e = this.events; this.events = []; return e; }
+  down(code) { return !!this.keys[code]; }
+  anyMovement() {
+    return this.down("ArrowLeft") || this.down("ArrowRight") ||
+           this.down("ArrowUp")  || this.down("ArrowDown")  ||
+           this.down("KeyA")     || this.down("KeyD")       ||
+           this.down("KeyW")     || this.down("KeyS");
+  }
+}
+
+/* ============================================================
+   5. BACKGROUND — starfield, sun, mountains, perspective grid
+   ============================================================ */
+class Background {
+  constructor(w, h) {
+    this.w = w; this.h = h;
+    this.t = 0;       // time accumulator for grid scroll
+    this.stars = [];
+    this._initStars();
+  }
+  _initStars() {
+    const horizon = CFG.BG.GRID_HORIZON * this.h;
+    for (let i = 0; i < CFG.BG.STAR_COUNT; i++) {
+      const y = rnd(0, horizon * 0.95);
+      const depth = rnd(0.2, 1.0);
+      this.stars.push({
+        x: rnd(0, this.w),
+        y,
+        depth,
+        size: rnd(0.4, 1.6) * depth,
+        twinkleSpeed: rnd(1.5, 4.0),
+        phase: rnd(0, TAU),
+        hot: Math.random() < 0.18,
+      });
+    }
+  }
+  // Scroll offset for the grid plane — feeds perspective math
+  setTime(t) { this.t = t; }
+  update(dt) {
+    for (const s of this.stars) s.phase += dt * s.twinkleSpeed;
+  }
+  draw(ctx) {
+    this._drawSky(ctx);
+    this._drawStars(ctx);
+    this._drawSun(ctx);
+    this._drawMountains(ctx);
+    this._drawGround(ctx);
+    this._drawGrid(ctx);
+    // Bottom vignette so HUD rests on darker bar
+    const g = ctx.createLinearGradient(0, this.h - 100, 0, this.h);
+    g.addColorStop(0, "rgba(10,0,51,0)");
+    g.addColorStop(1, "rgba(5,0,26,0.85)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, this.h - 100, this.w, 100);
+  }
+  _drawSky(ctx) {
+    const g = ctx.createLinearGradient(0, 0, 0, this.h);
+    g.addColorStop(0,    CFG.COLOR.bgSkyTop);
+    g.addColorStop(0.55, CFG.COLOR.bgSkyBot);
+    g.addColorStop(1,    "#170033");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, this.w, this.h);
+  }
+  _drawStars(ctx) {
+    for (const s of this.stars) {
+      const tw = 0.55 + 0.45 * Math.sin(s.phase);
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = s.hot ? CFG.COLOR.starHot : CFG.COLOR.star;
+      ctx.shadowBlur = s.hot ? 6 : 3;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, TAU);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+  _drawSun(ctx) {
+    const cx = CFG.BG.SUN_X_FRAC * this.w;
+    const cy = CFG.BG.SUN_Y_FRAC * this.h;
+    const R  = Math.min(this.w, this.h) * 0.22;
+    // Outer glow
+    const grad = ctx.createRadialGradient(cx, cy, R * 0.4, cx, cy, R * 1.5);
+    grad.addColorStop(0,   "rgba(255,138,0,0.55)");
+    grad.addColorStop(0.6, "rgba(255,43,209,0.18)");
+    grad.addColorStop(1,   "rgba(255,43,209,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 1.5, 0, TAU);
+    ctx.fill();
+
+    // Sun disc with vertical gradient
+    const sun = ctx.createLinearGradient(0, cy - R, 0, cy + R);
+    sun.addColorStop(0,   CFG.COLOR.sunTop);
+    sun.addColorStop(0.55, CFG.COLOR.sunMid);
+    sun.addColorStop(1,   CFG.COLOR.sunBot);
+    ctx.fillStyle = sun;
+    ctx.shadowBlur = 22;
+    ctx.shadowColor = "#ff8a00";
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, TAU);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Horizontal slit bands
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, TAU);
+    ctx.clip();
+    ctx.fillStyle = CFG.COLOR.sunBand;
+    const bands = CFG.BG.SUN_BANDS;
+    for (let i = 0; i < bands; i++) {
+      const t = (i + 1) / (bands + 1);
+      const by = cy - R + t * R * 2;
+      const bh = 2 + i * 1.5;
+      ctx.fillRect(cx - R, by, R * 2, bh);
+    }
+    ctx.restore();
+  }
+  _drawMountains(ctx) {
+    const horizon = CFG.BG.GRID_HORIZON * this.h;
+    ctx.fillStyle = CFG.COLOR.mountain;
+    ctx.shadowBlur = 0;
+    // Two silhouette ranges — far + near
+    ctx.beginPath();
+    ctx.moveTo(0, horizon);
+    let x = 0;
+    while (x < this.w + 60) {
+      const peakH = rnd(18, 50);
+      const peakW = rnd(50, 130);
+      x += peakW * 0.5;
+      ctx.lineTo(x, horizon - peakH);
+      x += peakW * 0.5;
+      ctx.lineTo(x, horizon);
+    }
+    ctx.lineTo(this.w, horizon);
+    ctx.lineTo(this.w, horizon + 30);
+    ctx.lineTo(0, horizon + 30);
+    ctx.closePath();
+    ctx.fill();
+
+    // Far mountains — lighter, fainter
+    ctx.fillStyle = "rgba(80,0,140,0.55)";
+    ctx.beginPath();
+    ctx.moveTo(0, horizon);
+    x = 0;
+    while (x < this.w + 60) {
+      const peakH = rnd(30, 75);
+      const peakW = rnd(70, 170);
+      x += peakW * 0.5;
+      ctx.lineTo(x, horizon - peakH);
+      x += peakW * 0.5;
+      ctx.lineTo(x, horizon);
+    }
+    ctx.lineTo(this.w, horizon);
+    ctx.lineTo(this.w, horizon + 18);
+    ctx.lineTo(0, horizon + 18);
+    ctx.closePath();
+    ctx.fill();
+  }
+  _drawGround(ctx) {
+    const horizon = CFG.BG.GRID_HORIZON * this.h;
+    // Solid ground plane behind the grid (sun reflect / dark base)
+    const g = ctx.createLinearGradient(0, horizon, 0, this.h);
+    g.addColorStop(0, "#170033");
+    g.addColorStop(1, "#05001a");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, horizon, this.w, this.h - horizon);
+    // Sun reflection pool — a subtle hot-pink wash on ground plane
+    const sx = CFG.BG.SUN_X_FRAC * this.w;
+    const refl = ctx.createRadialGradient(sx, horizon, 0, sx, horizon, this.w * 0.35);
+    refl.addColorStop(0, "rgba(255,43,209,0.35)");
+    refl.addColorStop(1, "rgba(255,43,209,0)");
+    ctx.fillStyle = refl;
+    ctx.fillRect(0, horizon, this.w, this.h - horizon);
+  }
+  _drawGrid(ctx) {
+    const horizon = CFG.BG.GRID_HORIZON * this.h;
+    const gs      = this.h - horizon;            // ground height
+    const speed   = CFG.BG.GRID_SPEED;
+    const offset  = (this.t * speed) % 60;       // px loop length (cell depth)
+    const lines   = CFG.BG.GRID_LINES;
+    const cols    = CFG.BG.GRID_COLS;
+
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = CFG.COLOR.grid;
+    ctx.shadowBlur  = 6;
+    ctx.shadowColor = CFG.COLOR.grid;
+
+    // Horizontal grid lines — perspective via spacing near horizon
+    for (let i = 0; i < lines; i++) {
+      // z goes 0..1, but with cell-wrap so it scrolls forward forever
+      let z = ((i + offset / 60) % 1);
+      // Project: lines bunch up at horizon, spread out near viewer
+      const t = Math.pow(z, 2.4);                // stronger perspective
+      const y = horizon + t * gs;
+      if (y < horizon || y > this.h) continue;
+
+      // Hot horizon highlight near top, fading toward bottom
+      const alpha = lerp(0.9, 0.5, t);
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = CFG.COLOR.grid;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(this.w, y);
+      ctx.stroke();
+    }
+
+    // Vertical perspective columns — fan out from center at horizon
+    const cx = this.w / 2;
+    for (let i = -cols; i <= cols; i++) {
+      if (i === 0) continue;
+      const xTop  = cx + i * (this.w / (cols * 2));     // narrow at horizon
+      const xBot  = cx + i * (this.w / cols);            // wide at bottom
+      ctx.globalAlpha = 0.75;
+      ctx.strokeStyle = CFG.COLOR.grid;
+      ctx.beginPath();
+      ctx.moveTo(xTop, horizon);
+      ctx.lineTo(xBot, this.h);
+      ctx.stroke();
+    }
+
+    // Hot horizon line — bright cyan/pink strip
+    ctx.globalAlpha = 1;
+    ctx.lineWidth   = 2;
+    ctx.strokeStyle = CFG.COLOR.gridHot;
+    ctx.shadowBlur  = 14;
+    ctx.shadowColor = CFG.COLOR.gridHot;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon);
+    ctx.lineTo(this.w, horizon);
+    ctx.stroke();
+    // second softer glow
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon);
+    ctx.lineTo(this.w, horizon);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 1;
+  }
+}
+
+/* (Alpha modulation done via ctx.globalAlpha — no separate helper needed.) */
+
+/* ============================================================
+   6. SCREEN SHAKE
+   ============================================================ */
+class ScreenShake {
+  constructor() { this.x = 0; this.y = 0; this.intensity = 0; }
+  trigger(intensity, duration) {
+    if (intensity > this.intensity) this.intensity = intensity;
+    this._dur = Math.max(this._dur || 0, duration);
+  }
+  update(dt) {
+    if (this.intensity > 0) {
+      // Random offset; intensity decay
+      this.x = (Math.random() * 2 - 1) * this.intensity;
+      this.y = (Math.random() * 2 - 1) * this.intensity;
+      this.intensity = Math.max(0, this.intensity - CFG.SHAKE.DECAY * dt * this.intensity);
+      this._dur = Math.max(0, (this._dur || 0) - dt);
+      if (this._dur <= 0) this.intensity = Math.max(0, this.intensity - 60 * dt);
+    } else {
+      this.x = this.y = 0;
+    }
+  }
+  apply(ctx) {
+    if (this.intensity > 0.1) ctx.translate(this.x, this.y);
+  }
+  reset() { this.intensity = 0; this.x = this.y = 0; }
+}
+
+/* ============================================================
+   7. PARTICLE SYSTEM — explosions, debris, sparks, smoke
+   ============================================================ */
+class Particle {
+  constructor(x, y, opts = {}) {
+    const speed = opts.speed != null ? opts.speed : rnd(40, 220);
+    const ang   = opts.angle != null ? opts.angle : rnd(0, TAU);
+    this.x  = x; this.y  = y;
+    this.vx = opts.vx != null ? opts.vx : Math.cos(ang) * speed;
+    this.vy = opts.vy != null ? opts.vy : Math.sin(ang) * speed;
+    this.life     = opts.life    != null ? opts.life    : rnd(0.5, 1.0);
+    this.maxLife  = this.life;
+    this.size     = opts.size    != null ? opts.size    : rnd(2, 5);
+    this.color    = opts.color   || "#ff2bd1";
+    this.gravity  = opts.gravity != null ? opts.gravity : 80;
+    this.drag     = opts.drag    != null ? opts.drag    : 1.2;
+    this.shape    = opts.shape   || "rect"; // rect | circle | line
+    this.flicker  = !!opts.flicker;
+    this.tint     = opts.tint    || null; // optional second color used when flickering
+  }
+  update(dt) {
+    this.vy += this.gravity * dt;
+    this.vx -= this.vx * this.drag * dt * 0.3;
+    this.vy -= this.vy * this.drag * dt * 0.3;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.life -= dt;
+  }
+  draw(ctx) {
+    const t = clamp(this.life / this.maxLife, 0, 1);
+    const sz = this.size * (0.4 + 0.6 * t);
+    ctx.globalAlpha = t;
+    let c = this.color;
+    if (this.flicker && Math.random() < 0.5) c = this.tint || "#ffffff";
+    ctx.fillStyle = c;
+    ctx.shadowBlur = sz * 6;
+    ctx.shadowColor = c;
+    if (this.shape === "circle") {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, sz, 0, TAU);
+      ctx.fill();
+    } else if (this.shape === "line") {
+      ctx.strokeStyle = c;
+      ctx.lineWidth = sz * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x - this.vx * 0.03, this.y - this.vy * 0.03);
+      ctx.stroke();
+    } else { // rect
+      ctx.fillRect(this.x - sz * 0.5, this.y - sz * 0.5, sz, sz);
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+  get dead() { return this.life <= 0; }
+}
+
+class ParticleSystem {
+  constructor() { this.list = []; }
+  spawn(x, y, count, opts) {
+    for (let i = 0; i < count; i++) {
+      this.list.push(new Particle(x, y, opts));
+    }
+  }
+  burst(x, y, scale = 1, palette = ["#ff2bd1", "#ffe14a", "#00f5ff", "#ffffff"]) {
+    // Big explosion: many particles of mixed shape
+    this.spawn(x, y, Math.floor(28 * scale), { life: rnd(0.5, 1.0), size: rnd(2.5, 5), speed: rnd(60, 320), gravity: 60, drag: 1.0, color: pick(palette), shape: "rect" });
+    this.spawn(x, y, Math.floor(14 * scale), { life: rnd(0.4, 0.8), size: rnd(1.5, 3),   speed: rnd(120, 480), gravity: 30, drag: 2.0, color: pick(palette), shape: "line" });
+    this.spawn(x, y, Math.floor(8  * scale), { life: rnd(0.6, 1.4), size: rnd(2, 5),   speed: rnd(20, 110), gravity: 0,  drag: 1.0, color: pick(palette), shape: "circle", tint: "#ffffff", flicker: true });
+    this.spawn(x, y, Math.floor(6  * scale), { life: rnd(0.8, 1.2), size: rnd(4, 7),   speed: rnd(20, 90), gravity: -40, drag: 0.5, color: "#ffffff", shape: "rect" }); // smoke puffs
+  }
+  thrust(x, y, dx) {
+    // Player engine flame trail
+    this.spawn(x, y, 1, {
+      life: 0.22, size: rnd(2.5, 4.5), speed: 0,
+      vx: -dx * 6 + rnd(-20, 20), vy: rnd(80, 160),
+      gravity: 0, drag: 4, color: pick(["#ff8a00", "#ffe14a", "#ff2bd1"]),
+      shape: "circle",
+    });
+  }
+  spark(x, y, count = 6) {
+    this.spawn(x, y, count, {
+      life: 0.3, size: rnd(1.5, 3), speed: rnd(60, 220),
+      gravity: 100, drag: 2, color: pick(["#ffe14a", "#ffffff"]), shape: "line",
+    });
+  }
+  enemyHit(x, y) {
+    this.spawn(x, y, 12, { life: 0.4, size: rnd(1.5, 3), speed: rnd(80, 280), gravity: 0, drag: 2, color: pick(["#00f5ff", "#ffffff", "#ffe14a"]), shape: "line" });
+  }
+  update(dt) {
+    for (const p of this.list) p.update(dt);
+    this.list = this.list.filter(p => !p.dead);
+  }
+  draw(ctx) {
+    for (const p of this.list) p.draw(ctx);
+  }
+  clear() { this.list.length = 0; }
+}
+
+/* ============================================================
+   8. ENTITIES — Player, Enemy variants, Bullet, PowerUp, Boss
+   ============================================================ */
+
+/* -------------------- Player -------------------- */
+class Player {
+  constructor(x, y, opts) {
+    opts = opts || {};
+    this.x = x; this.y = y; this.w = CFG.PLAYER.W; this.h = CFG.PLAYER.H;
+    this.speed    = CFG.PLAYER.BASE_SPEED * (opts.playerSpd    != null ? opts.playerSpd    : 1);
+    this.coolMul  = (opts.playerCD != null ? opts.playerCD : 1); // smaller => faster shots
+    this.cool     = 0;
+    this.lives    = (opts.lives != null) ? opts.lives : CFG.PLAYER.MAX_LIVES;
+    this.alive    = true;
+    this.invT     = 0;
+    this.flame    = 0;
+    this.powerups = { multi: 0, rapid: 0, shield: 0 };
+    this.faceTilt = 0;
+  }
+  hit() {
+    if (this.invT > 0 || !this.alive) return false;
+    if (this.powerups.shield > 0) {
+      this.powerups.shield = 0;
+      this.invT = 0.5;
+      return false;
+    }
+    this.lives -= 1;
+    if (this.lives <= 0) {
+      this.alive = false;
+    } else {
+      this.invT = CFG.PLAYER.INV_TIME;
+    }
+    return true;
+  }
+  respawn() {
+    this.alive = true;
+    this.invT = CFG.PLAYER.INV_TIME;
+    this.cool = 0;
+    this.powerups.multi = 0;
+    this.powerups.rapid = 0;
+  }
+  get fireCooldown() {
+    const base = this.powerups.rapid > 0 ? CFG.PLAYER.RAPID_COOLDN : CFG.PLAYER.FIRE_COOLDN;
+    return base * this.coolMul;
+  }
+  update(dt, input) {
+    if (!this.alive) return;
+    // Movement
+    let dx = 0, dy = 0;
+    if (input.down("ArrowLeft")  || input.down("KeyA")) dx -= 1;
+    if (input.down("ArrowRight") || input.down("KeyD")) dx += 1;
+    if (input.down("ArrowUp")    || input.down("KeyW")) dy -= 1;
+    if (input.down("ArrowDown")  || input.down("KeyS")) dy += 1;
+    if (dx !== 0 || dy !== 0) {
+      const inv = 1 / Math.hypot(dx, dy);
+      dx *= inv; dy *= inv;
+    }
+    this.x += dx * this.speed * dt;
+    this.y += dy * this.speed * dt;
+    this.x = clamp(this.x, 8, CFG.W - this.w - 8);
+    this.y = clamp(this.y, 220, CFG.H - this.h - 20);
+
+    // Body tilt — small visual feedback on horizontal motion
+    this.faceTilt = lerp(this.faceTilt, dx * 0.25, dt * 8);
+
+    // Cooldowns
+    this.cool  = Math.max(0, this.cool - dt);
+    this.invT  = Math.max(0, this.invT - dt);
+    this.flame = Math.max(0, this.flame - dt);
+    for (const k of Object.keys(this.powerups)) {
+      this.powerups[k] = Math.max(0, this.powerups[k] - dt);
+    }
+  }
+  tryFire(input, bullets) {
+    if (!this.alive) return false;
+    if (this.cool > 0) return false;
+    if (!input.down("Space") && !input.down("KeyJ")) return false;
+    this.cool = this.fireCooldown;
+    if (this.powerups.multi > 0) {
+      bullets.push(new Bullet(this.x + this.w * 0.5 - 2, this.y - 4, -0.4,  -1));
+      bullets.push(new Bullet(this.x + this.w * 0.5 - 2, this.y - 4,  0,    -1));
+      bullets.push(new Bullet(this.x + this.w * 0.5 - 2, this.y - 4,  0.4,  -1));
+    } else {
+      bullets.push(new Bullet(this.x + this.w * 0.5 - 2, this.y - 4, 0, -1));
+    }
+    this.flame = 0.05;
+    return true;
+  }
+  draw(ctx) {
+    if (!this.alive) return;
+    ctx.save();
+    ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+    ctx.rotate(this.faceTilt * 0.4);
+
+    // Engine flame — flickers under ship
+    const flameLen = 22 + Math.sin(performance.now() * 0.04) * 6 + (this.flame > 0 ? 18 : 0);
+    const fg = ctx.createLinearGradient(0, this.h / 2, 0, this.h / 2 + flameLen);
+    fg.addColorStop(0,    "rgba(255,255,200,1)");
+    fg.addColorStop(0.4,  "rgba(255,138,0,0.9)");
+    fg.addColorStop(1,    "rgba(255,43,209,0)");
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(-this.w * 0.18, this.h / 2);
+    ctx.lineTo( this.w * 0.18, this.h / 2);
+    ctx.lineTo( 0,             this.h / 2 + flameLen);
+    ctx.closePath();
+    ctx.fill();
+
+    // Shield aura
+    if (this.powerups.shield > 0) {
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = CFG.COLOR.shield;
+      ctx.strokeStyle = "rgba(0,245,255,0.65)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, this.w * 0.85, 0, TAU);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Hull — neon cyan fighter shape
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = CFG.COLOR.player;
+
+    // Body fill
+    ctx.fillStyle = "#0a3340";
+    ctx.beginPath();
+    ctx.moveTo(0, -this.h * 0.55);
+    ctx.lineTo(this.w * 0.45, this.h * 0.20);
+    ctx.lineTo(this.w * 0.50, this.h * 0.50);
+    ctx.lineTo(this.w * 0.22, this.h * 0.42);
+    ctx.lineTo(-this.w * 0.22, this.h * 0.42);
+    ctx.lineTo(-this.w * 0.50, this.h * 0.50);
+    ctx.lineTo(-this.w * 0.45, this.h * 0.20);
+    ctx.closePath();
+    ctx.fill();
+
+    // Neon outline
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = CFG.COLOR.player;
+    ctx.stroke();
+
+    // Wing accents
+    ctx.strokeStyle = CFG.COLOR.playerEdge;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-this.w * 0.45, this.h * 0.20);
+    ctx.lineTo(-this.w * 0.55, this.h * 0.46);
+    ctx.moveTo(this.w * 0.45, this.h * 0.20);
+    ctx.lineTo(this.w * 0.55, this.h * 0.46);
+    ctx.stroke();
+
+    // Cockpit glow
+    ctx.fillStyle = CFG.COLOR.playerEdge;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = CFG.COLOR.playerEdge;
+    ctx.beginPath();
+    ctx.ellipse(0, -this.h * 0.12, this.w * 0.18, this.h * 0.16, 0, 0, TAU);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Damage flicker while invuln
+    if (this.invT > 0 && Math.floor(this.invT * 20) % 2 === 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+      ctx.restore();
+    }
+  }
+}
+
+/* -------------------- Bullet -------------------- */
+class Bullet {
+  constructor(x, y, dx, dy, speed = 720, color = "#00f5ff", size = 4, fromPlayer = true) {
+    this.x = x; this.y = y;
+    this.w = 4; this.h = 12;
+    this.dx = dx; this.dy = dy;
+    const l = Math.hypot(dx, dy) || 1;
+    this.vx = (dx / l) * speed;
+    this.vy = (dy / l) * speed;
+    this.color = color;
+    this.size = size;
+    this.fromPlayer = fromPlayer;
+    this.dead = false;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    if (this.y < -20 || this.y > CFG.H + 20 || this.x < -20 || this.x > CFG.W + 20) {
+      this.dead = true;
+    }
+  }
+  draw(ctx) {
+    const len = 14;
+    const ang = Math.atan2(this.vy, this.vx);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(ang);
+    ctx.fillStyle = this.color;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = this.color;
+    ctx.fillRect(-2, -len / 2, 4, len);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-1, -len / 2 + 3, 2, len - 6);
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  }
+}
+
+/* -------------------- Enemy types -------------------- */
+/*
+   Base Enemy class — subclasses only override draw() and shooting().
+   Movement pattern is determined by `ai` (scripted function).
+*/
+class Enemy {
+  constructor(x, y, opts = {}) {
+    this.x = x; this.y = y;
+    this.w = opts.w || 36;
+    this.h = opts.h || 32;
+    this.hp = opts.hp || 1;
+    this.maxHp = this.hp;
+    this.score = opts.score || 100;
+    this.color = opts.color || "#ff2bd1";
+    this.edgeColor = opts.edge || "#ffe14a";
+    this.kind = opts.kind || "scout";
+    this.shootCooldown = opts.shootCD || -1; // -1 = no shooting
+    this.shootTimer = rnd(0.5, 1.4);
+    this.ai = opts.ai || ((e, dt) => { e.y += 130 * dt; });
+    this.alive = true;
+    this.spin = 0;
+  }
+  hit(dmg = 1) {
+    this.hp -= dmg;
+    if (this.hp <= 0) this.alive = false;
+    return this.hp <= 0;
+  }
+  update(dt, bullets) {
+    this.ai(this, dt);
+    this.spin += dt * 1.5;
+    if (this.shootCooldown > 0) {
+      this.shootTimer -= dt;
+      if (this.shootTimer <= 0) {
+        this.shoot(bullets);
+        this.shootTimer = this.shootCooldown + rnd(-0.4, 0.4);
+      }
+    }
+    if (this.y > CFG.H + 60) this.alive = false;
+  }
+  shoot(bullets) {
+    bullets.push(new Bullet(this.x + this.w / 2, this.y + this.h, 0, 1, 460, "#ff2bd1", 4, false));
+  }
+  draw(ctx) {
+    // Default silhouette: hexagonal ship
+    ctx.save();
+    ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = this.color;
+    ctx.fillStyle = "#1a001a";
+    ctx.beginPath();
+    ctx.moveTo(0, -this.h / 2);
+    ctx.lineTo(this.w * 0.45, -this.h * 0.15);
+    ctx.lineTo(this.w * 0.5,  this.h * 0.20);
+    ctx.lineTo(this.w * 0.30, this.h * 0.50);
+    ctx.lineTo(-this.w * 0.30, this.h * 0.50);
+    ctx.lineTo(-this.w * 0.5, this.h * 0.20);
+    ctx.lineTo(-this.w * 0.45, -this.h * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.color;
+    ctx.stroke();
+    // Core glow
+    ctx.fillStyle = this.edgeColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, this.w * 0.13, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// Scout — small, fast, no shooting. d = { enemySpd, enemyHp, scoreMul }
+const ScoutFactory = (x, d) => new Enemy(x, -40, {
+  kind: "scout", w: 26, h: 22,
+  hp: Math.max(1, Math.round(1 * d.enemyHp)),
+  score: Math.round(100 * d.scoreMul),
+  color: "#ff2bd1", edge: "#ffffff",
+  ai: (e, dt) => { e.y += 180 * d.enemySpd * dt; },
+});
+
+// Fighter — medium, sin-wave, shoots. shootCD scaled inversely with d.fireRate
+const FighterFactory = (x, d) => new Enemy(x, -50, {
+  kind: "fighter", w: 38, h: 34,
+  hp: Math.max(1, Math.round(2 * d.enemyHp)),
+  score: Math.round(250 * d.scoreMul),
+  color: "#9d00ff", edge: "#ffe14a",
+  shootCD: 1.6 / d.fireRate,
+  ai: (e, dt) => {
+    e.baseY = (e.baseY || 0) + dt;
+    e.y += 130 * d.enemySpd * dt;
+    e.x += Math.sin(e.baseY * 2.4) * 80 * d.enemySpd * dt;
+    e.x = clamp(e.x, 10, CFG.W - e.w - 10);
+  },
+});
+
+// Tank — slow, heavy, frequent shots + dual-barrel
+const TankFactory = (x, d) => new Enemy(x, -60, {
+  kind: "tank", w: 54, h: 50,
+  hp: Math.max(1, Math.round(4 * d.enemyHp)),
+  score: Math.round(500 * d.scoreMul),
+  color: "#7a00ff", edge: "#ff5e3a",
+  shootCD: 1.1 / d.fireRate,
+  ai: (e, dt) => { e.y += 65 * d.enemySpd * dt; },
+  shoot(bullets) {
+    const speed = 460 * (d.enemyBullet || 1);
+    bullets.push(new Bullet(e.x + e.w * 0.3, e.y + e.h, 0, 1, speed, "#ff2bd1", 4, false));
+    bullets.push(new Bullet(e.x + e.w * 0.7, e.y + e.h, 0, 1, speed, "#ff2bd1", 4, false));
+  },
+});
+
+// Bomber — sin + drop bombs
+const BomberFactory = (x, d) => new Enemy(x, -70, {
+  kind: "bomber", w: 48, h: 40,
+  hp: Math.max(1, Math.round(3 * d.enemyHp)),
+  score: Math.round(400 * d.scoreMul),
+  color: "#ff8a00", edge: "#ffe14a",
+  shootCD: 1.8 / d.fireRate,
+  ai: (e, dt) => {
+    e.baseY = (e.baseY || 0) + dt;
+    e.y += 70 * d.enemySpd * dt;
+    e.x += Math.sin(e.baseY * 1.3) * 70 * d.enemySpd * dt;
+    e.x = clamp(e.x, 10, CFG.W - e.w - 10);
+  },
+  shoot(bullets) {
+    const speed = 420 * (d.enemyBullet || 1);
+    bullets.push(new Bullet(e.x + e.w / 2, e.y + e.h, 0, 1, speed, "#ff2bd1", 4, false));
+  },
+});
+
+/* Boss — every Nth wave. Big HP, multi-pattern, dramatic intro
+   Constructor takes (waveNum, d) where d is a difficulty preset. */
+class Boss {
+  constructor(waveNum, d) {
+    d = d || CFG.DIFFICULTY.normal;
+    this.kind = "boss";
+    this.x = CFG.W / 2 - 100;
+    this.y = -160;
+    this.w = 200;
+    this.h = 120;
+    this.hp = Math.round((60 + waveNum * 8) * d.bossHp);
+    this.maxHp = this.hp;
+    this.score = Math.round((5000 + waveNum * 1000) * d.scoreMul);
+    this.color = "#ff00ff";
+    this.edgeColor = "#ffe14a";
+    this.alive = true;
+    this.entering = true;
+    // fireRate acts inversely: cooldown / fireRate => harder = faster shots
+    this.shootCD = 0.5 / d.fireRate;
+    this.shootTimer = 1.5;
+    this.bulletSpeed = 360 * d.bossBullet;
+    this.sideBulletSpeed = 380 * d.bossBullet;
+    // Insane difficulty widens the spread for more bullet pressure
+    this.spreadFan = d.bossBullet >= 1.3 ? 3 : 2;
+    this.spin = 0;
+    this.phase = 0;
+    this.direction = 1;
+  }
+  hit(dmg = 1) {
+    this.hp -= dmg;
+    if (this.hp <= 0) this.alive = false;
+    return this.hp <= 0;
+  }
+  update(dt, bullets) {
+    this.spin += dt;
+    if (this.entering) {
+      this.y += 60 * dt;
+      if (this.y >= 50) { this.y = 50; this.entering = false; }
+    } else {
+      // Drift horizontally
+      this.x += this.direction * 90 * dt;
+      if (this.x <= 20) { this.x = 20; this.direction = 1; }
+      if (this.x + this.w >= CFG.W - 20) { this.x = CFG.W - this.w - 20; this.direction = -1; }
+    }
+    this.shootTimer -= dt;
+    if (this.shootTimer <= 0 && !this.entering) {
+      this._burst(bullets);
+      this.shootTimer = this.shootCD;
+    }
+  }
+  _burst(bullets) {
+    const cx = this.x + this.w / 2;
+    const cy = this.y + this.h;
+    // 5-way spread (or 7-way on harder difficulties via spreadFan) + extra side shots
+    for (let i = -this.spreadFan; i <= this.spreadFan; i++) {
+      bullets.push(new Bullet(cx, cy, i * 0.35, 1, this.bulletSpeed, "#ff2bd1", 5, false));
+    }
+    if (Math.random() < 0.5) {
+      bullets.push(new Bullet(this.x + 16, cy - 4, -0.2, 1, this.sideBulletSpeed, "#ff2bd1", 5, false));
+      bullets.push(new Bullet(this.x + this.w - 16, cy - 4, 0.2, 1, this.sideBulletSpeed, "#ff2bd1", 5, false));
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = this.color;
+
+    // Body — wide hexagonal dreadnought
+    ctx.fillStyle = "#1a001a";
+    ctx.beginPath();
+    ctx.moveTo(-this.w * 0.48, -this.h * 0.20);
+    ctx.lineTo(-this.w * 0.25, -this.h * 0.45);
+    ctx.lineTo( this.w * 0.25, -this.h * 0.45);
+    ctx.lineTo( this.w * 0.48, -this.h * 0.20);
+    ctx.lineTo( this.w * 0.50,  this.h * 0.10);
+    ctx.lineTo( this.w * 0.30,  this.h * 0.40);
+    ctx.lineTo(-this.w * 0.30,  this.h * 0.40);
+    ctx.lineTo(-this.w * 0.50,  this.h * 0.10);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = this.color;
+    ctx.stroke();
+
+    // Wing cannons
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.moveTo(side * this.w * 0.46, -this.h * 0.10);
+      ctx.lineTo(side * this.w * 0.62,  this.h * 0.10);
+      ctx.lineTo(side * this.w * 0.48,  this.h * 0.30);
+      ctx.lineTo(side * this.w * 0.32,  this.h * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = this.color;
+      ctx.stroke();
+    }
+
+    // Core reactor — pulsing
+    const pulse = 0.7 + 0.3 * Math.sin(this.spin * 4);
+    const rg = ctx.createRadialGradient(0, 0, 4, 0, 0, 36 * pulse);
+    rg.addColorStop(0, "#ffffff");
+    rg.addColorStop(0.5, this.color);
+    rg.addColorStop(1, "rgba(255,0,255,0)");
+    ctx.fillStyle = rg;
+    ctx.beginPath();
+    ctx.arc(0, 0, 36 * pulse, 0, TAU);
+    ctx.fill();
+
+    // Eye stripe
+    ctx.fillStyle = this.edgeColor;
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = this.edgeColor;
+    ctx.fillRect(-this.w * 0.18, -this.h * 0.08, this.w * 0.36, this.h * 0.10);
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
+/* -------------------- PowerUp -------------------- */
+const POWERUP_TYPES = ["multi", "rapid", "shield"];
+
+class PowerUp {
+  constructor(x, y, kind) {
+    this.x = x; this.y = y;
+    this.w = 26; this.h = 26;
+    this.kind = kind;
+    this.vy = 120;
+    this.dead = false;
+    this.age = 0;
+  }
+  update(dt) {
+    this.y += this.vy * dt;
+    this.vy *= 0.99;
+    this.age += dt;
+    if (this.y > CFG.H + 30) this.dead = true;
+  }
+  draw(ctx) {
+    const cx = this.x + this.w / 2;
+    const cy = this.y + this.h / 2;
+    const bob = Math.sin(this.age * 4) * 2;
+    const color = this.kind === "multi" ? CFG.COLOR.powerupM
+                : this.kind === "rapid" ? CFG.COLOR.powerupR
+                                          : CFG.COLOR.powerupS;
+    ctx.save();
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = color;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(this.x, this.y + bob, this.w, this.h);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(this.x + 0.5, this.y + bob + 0.5, this.w - 1, this.h - 1);
+    ctx.fillStyle = color;
+    ctx.font = "bold 14px Courier New";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(this.kind === "multi" ? "M" : this.kind === "rapid" ? "R" : "S", cx, cy + bob);
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  }
+}
+
+/* ============================================================
+   9. GAME — main loop, state machine, scoring, rendering
+   ============================================================ */
+class Game {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.audio = new SynthAudio();
+    this.input = new Input(window);
+    this.input.audio = this.audio;
+
+    this.bg       = new Background(CFG.W, CFG.H);
+    this.shake    = new ScreenShake();
+    this.fx       = new ParticleSystem();
+
+    this.state = "title"; // title | playing | paused | gameover | victory
+    this.score = 0;
+    this.highScore = +(localStorage.getItem("rss_high") || 0);
+    this.wave = 0;
+    this.waveTimer = 0;
+    this.waveIncoming = false;
+    this.waveIncomingT = 0;
+    this.enemiesToSpawn = 0;
+    this.spawnTimer = 0;
+    this.bossActive = false;
+    this.endT = 0; // title / game over fade timer
+    this.flashT = 0;
+
+    // Difficulty — restore last choice, fall back to "normal"
+    const saved = localStorage.getItem("rss_difficulty");
+    this.difficulty = (saved && CFG.DIFFICULTY[saved]) ? saved : "normal";
+    this._refreshDifficultyChrome();
+
+    // Player is created with current difficulty but full reset happens in _startGame
+    this.player = new Player(CFG.W / 2 - 18, CFG.H - 90, this._diff());
+    this.enemies = [];
+    this.bullets = [];
+    this.eBullets = [];
+    this.powerups = [];
+
+    this.lastTime = performance.now();
+    this.elapsed = 0;
+
+    this._bindUI();
+
+    // Apply DPR scaling — keep logical canvas size, fill crisp pixels
+    this._resizeCanvas();
+    window.addEventListener("resize", () => this._resizeCanvas());
+  }
+
+  // Helper — current difficulty preset, always returns a valid object
+  _diff() {
+    return CFG.DIFFICULTY[this.difficulty] || CFG.DIFFICULTY.normal;
+  }
+
+  _bindUI() {
+    const btn = $("audio-toggle");
+    btn.addEventListener("click", () => {
+      this.audio.ensure();
+      const muted = this.audio.toggle();
+      btn.textContent = muted ? "SOUND OFF" : "SOUND ON";
+      btn.classList.toggle("muted", muted);
+    });
+
+    // Difficulty chip click handlers — set + persist + repaint active state
+    document.querySelectorAll(".diff-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const diff = chip.dataset.diff;
+        if (!CFG.DIFFICULTY[diff]) return;
+        this.difficulty = diff;
+        localStorage.setItem("rss_difficulty", diff);
+        this._refreshDifficultyChrome();
+      });
+      chip.addEventListener("dblclick", () => {
+        // Double-click chip = launch immediately with that difficulty
+        this.audio.ensure();
+        this.audio.resume();
+        this._startGame();
+      });
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "KeyM") {
+        const muted = this.audio.toggle();
+        btn.textContent = muted ? "SOUND OFF" : "SOUND ON";
+        btn.classList.toggle("muted", muted);
+      }
+      if (e.code === "KeyP" || e.code === "Escape") {
+        if (this.state === "playing") {
+          this.state = "paused";
+          this._setBodyState("paused");
+        }
+        else if (this.state === "paused") {
+          this.state = "playing";
+          this._setBodyState("playing");
+        }
+        else if (this.state === "gameover" || this.state === "victory") {
+          // Back to title from a finished game so the player can switch difficulty
+          this._returnToTitle();
+        }
+      }
+      // Number keys 1-4 = quick-pick difficulty on title screen
+      if (this.state === "title" || this.state === "gameover" || this.state === "victory") {
+        if (e.code === "Digit1") { this._pickDifficulty("rookie"); }
+        if (e.code === "Digit2") { this._pickDifficulty("normal"); }
+        if (e.code === "Digit3") { this._pickDifficulty("hard"); }
+        if (e.code === "Digit4") { this._pickDifficulty("insane"); }
+        if (e.code === "ArrowLeft" || e.code === "ArrowRight") {
+          // Cycle through difficulties with arrow keys
+          const idx = CFG.DIFF_ORDER.indexOf(this.difficulty);
+          const next = e.code === "ArrowLeft"
+            ? (idx - 1 + CFG.DIFF_ORDER.length) % CFG.DIFF_ORDER.length
+            : (idx + 1) % CFG.DIFF_ORDER.length;
+          this._pickDifficulty(CFG.DIFF_ORDER[next]);
+        }
+      }
+      if (e.code === "Space") {
+        if (this.state === "title" || this.state === "gameover" || this.state === "victory") {
+          this.audio.ensure();
+          this.audio.resume();
+          this._startGame();
+        }
+      }
+      if (e.code === "KeyR") {
+        if (this.state === "gameover" || this.state === "victory") this._startGame();
+      }
+      if (e.code === "Enter") {
+        if (this.state === "title") { this.audio.ensure(); this.audio.resume(); this._startGame(); }
+      }
+    });
+  }
+
+  _pickDifficulty(diff) {
+    if (!CFG.DIFFICULTY[diff]) return;
+    this.difficulty = diff;
+    localStorage.setItem("rss_difficulty", diff);
+    this._refreshDifficultyChrome();
+  }
+
+  _returnToTitle() {
+    this.state = "title";
+    this.endT = 0;
+    this.shake.reset();
+    $("page-title").classList.remove("hidden");
+    this._setBodyState("title");
+  }
+
+  // Centralised body-class toggle — chips etc. read these via CSS
+  _setBodyState(s) {
+    document.body.classList.remove("title", "playing", "paused", "gameover", "victory");
+    if (s) document.body.classList.add(s);
+  }
+
+  _resizeCanvas() {
+    const frame = $("game-frame");
+    // Fit canvas to viewport while keeping aspect ratio
+    const maxW = Math.min(window.innerWidth - 20, 1100);
+    const ratio = CFG.H / CFG.W;
+    const cssW = Math.min(maxW, CFG.W);
+    const cssH = cssW * ratio;
+    frame.style.width  = cssW + "px";
+    frame.style.height = cssH + "px";
+    this.canvas.style.width = cssW + "px";
+    this.canvas.style.height = cssH + "px";
+  }
+
+  // ---------- High-level state management ----------
+  _startGame() {
+    const d = this._diff();
+    this.score = 0;
+    this.wave = 0;
+    this.waveTimer = 1.0;
+    this.waveIncoming = true;
+    this.bossActive = false;
+    this.enemies.length = 0;
+    this.bullets.length = 0;
+    this.eBullets.length = 0;
+    this.powerups.length = 0;
+    this.fx.clear();
+    this.player = new Player(CFG.W / 2 - 18, CFG.H - 90, {
+      lives: d.lives, playerSpd: d.playerSpd, playerCD: d.playerCD,
+    });
+    this.shake.reset();
+    this.audio.setMusicTempo(d.musicBpm);
+    this.state = "playing";
+    $("page-title").classList.add("hidden");
+    this._setBodyState("playing");
+  }
+
+  _nextWave() {
+    this.wave += 1;
+    const d = this._diff();
+    if (this.wave % d.bossEvery === 0) {
+      this.bossActive = true;
+      this.enemiesToSpawn = 1;
+      this.spawnTimer = 0;
+      this.waveIncoming = false;
+      this.shake.trigger(CFG.SHAKE.BIG, 0.6);
+      this.audio.explosion(2);
+      this.fx.burst(CFG.W / 2, 80, 2.2, ["#ff00ff", "#ffe14a", "#00f5ff"]);
+    } else {
+      this.enemiesToSpawn = Math.round((CFG.WAVE.ENEMIES_PER + this.wave * 2) * d.spawnRate);
+      this.spawnTimer = 0;
+      this.waveIncoming = false;
+    }
+    this.waveIncomingT = 1.4;
+  }
+
+  _spawnEnemy() {
+    const d = this._diff();
+    const x = rnd(20, CFG.W - 80);
+    const r = Math.random();
+    let enemy;
+    const tier = this.wave;
+    if (tier >= 4 && r < 0.15)      enemy = TankFactory(x, d);
+    else if (tier >= 2 && r < 0.45) enemy = BomberFactory(x, d);
+    else if (r < 0.75)              enemy = FighterFactory(x, d);
+    else                            enemy = ScoutFactory(x, d);
+    this.enemies.push(enemy);
+  }
+
+  _dropPowerup(x, y) {
+    if (this.bossActive) return; // skip during boss
+    const chance = CFG.POWER.DROP_CHANCE * this._diff().dropMul;
+    if (Math.random() > chance) return;
+    const kind = pick(POWERUP_TYPES);
+    this.powerups.push(new PowerUp(x - 13, y - 13, kind));
+  }
+
+  // Difficulty chrome — refresh UI to reflect current preset
+  _refreshDifficultyChrome() {
+    const d = this._diff();
+    // Title-screen chips
+    const chips = document.querySelectorAll(".diff-chip");
+    chips.forEach((c) => {
+      const on = c.dataset.diff === this.difficulty;
+      c.classList.toggle("active", on);
+      c.style.borderColor = on ? d.color : "";
+      c.style.color       = on ? d.color : "";
+      c.style.boxShadow   = on ? `0 0 12px ${d.color}, 0 0 24px ${d.color}55` : "";
+    });
+  }
+
+  // ---------- Main loop ----------
+  loop(now) {
+    const dtRaw = (now - this.lastTime) / 1000;
+    this.lastTime = now;
+    const dt = Math.min(dtRaw, 0.05); // cap to avoid catastrophic jumps
+    this.elapsed += dt;
+
+    this.update(dt);
+    this.render();
+    requestAnimationFrame((t) => this.loop(t));
+  }
+
+  update(dt) {
+    this.bg.update(dt);
+    this.shake.update(dt);
+    this.fx.update(dt);
+    this.flashT = Math.max(0, this.flashT - dt);
+
+    // Background music keeps playing in menu/paused scenes too
+    this.audio.updateMusic(dt);
+
+    const ev = this.input.consume();
+
+    if (this.state === "title" || this.state === "gameover" || this.state === "victory") {
+      this.endT += dt;
+      // Title flames flicker behind menu
+      if (this.state === "title" && Math.random() < 0.4) {
+        this.fx.thrust(CFG.W / 2, CFG.H - 60, 0);
+      }
+      return;
+    }
+
+    if (this.state === "paused") {
+      return;
+    }
+
+    // ---------- PLAYING ----------
+    // Wave control
+    if (!this.bossActive) {
+      if (this.waveIncoming) {
+        this.waveTimer -= dt;
+        if (this.waveTimer <= 0) this._nextWave();
+      } else {
+        this.spawnTimer -= dt;
+        if (this.spawnTimer <= 0 && this.enemiesToSpawn > 0) {
+          this._spawnEnemy();
+          this.enemiesToSpawn -= 1;
+          // Spawn rate scales with difficulty preset
+          const d = this._diff();
+          this.spawnTimer = 1 / (CFG.WAVE.SPAWN_RATE * d.spawnRate) * rnd(0.7, 1.3);
+        }
+        // Wave clear -> brief pause -> next wave
+        if (this.enemiesToSpawn <= 0 && this.enemies.length === 0) {
+          this.waveIncoming = true;
+          this.waveTimer = CFG.WAVE.INTER_DELAY;
+          this.waveIncomingT = 1.4;
+        }
+      }
+    }
+
+    if (this.waveIncomingT > 0) this.waveIncomingT = Math.max(0, this.waveIncomingT - dt);
+
+    // Player
+    this.player.update(dt, this.input);
+
+    // Engine flame particles
+    if (this.player.alive && (this.input.anyMovement() || this.player.flame > 0)) {
+      this.fx.thrust(this.player.x + this.player.w * 0.5 + rnd(-4, 4),
+                     this.player.y + this.player.h - 2,
+                     (this.input.down("ArrowRight") || this.input.down("KeyD")) ? -1 : 1);
+      if (Math.random() < 0.3) this.fx.thrust(this.player.x + this.player.w * 0.3, this.player.y + this.player.h - 2, 1);
+    }
+
+    this.player.tryFire(this.input, this.bullets);
+
+    // Update bullets
+    for (const b of this.bullets) b.update(dt);
+    for (const b of this.eBullets) b.update(dt);
+
+    // Spawn boss (once per boss wave) — pass current difficulty preset
+    if (this.bossActive && this.enemies.length === 0 && this.player.alive && !this.bossSpawned) {
+      const boss = new Boss(this.wave, this._diff());
+      this.enemies.push(boss);
+      this.bossSpawned = true;
+    }
+    if (!this.bossActive) this.bossSpawned = false;
+
+    // Update enemies / boss
+    for (const e of this.enemies) {
+      if (e instanceof Boss) e.update(dt, this.eBullets);
+      else                    e.update(dt, this.eBullets);
+    }
+
+    // Power-ups
+    for (const p of this.powerups) p.update(dt);
+
+    // Collisions
+    this._collide();
+
+    // Cleanup dead
+    this.enemies  = this.enemies.filter(e => e.alive);
+    this.bullets  = this.bullets.filter(b => !b.dead);
+    this.eBullets = this.eBullets.filter(b => !b.dead);
+    this.powerups = this.powerups.filter(p => !p.dead);
+
+    // Death / victory
+    if (!this.player.alive) {
+      this.audio.death();
+      this.shake.trigger(CFG.SHAKE.BIG, 0.6);
+      this.fx.burst(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2, 2.5, ["#00f5ff", "#ffffff", "#ffe14a"]);
+      this.endT = 0;
+      this.state = "gameover";
+      this._setBodyState("gameover");
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+        localStorage.setItem("rss_high", this.highScore);
+      }
+    }
+  }
+
+  // ---------- Collisions ----------
+  _collide() {
+    // Player bullets vs enemies
+    for (const b of this.bullets) {
+      if (b.dead) continue;
+      for (const e of this.enemies) {
+        if (!e.alive) continue;
+        if (aabb(b, e)) {
+          e.hit(1);
+          b.dead = true;
+          this.fx.enemyHit(b.x, b.y);
+          this.shake.trigger(e instanceof Boss ? CFG.SHAKE.SMALL : CFG.SHAKE.SMALL * 0.5, 0.08);
+          if (!e.alive) this._onEnemyKilled(e);
+          break;
+        }
+      }
+    }
+
+    // Enemy bullets vs player
+    if (this.player.alive) {
+      for (const b of this.eBullets) {
+        if (b.dead) continue;
+        if (aabb(b, this.player)) {
+          b.dead = true;
+          if (this.player.hit()) {
+            this.shake.trigger(CFG.SHAKE.MEDIUM, 0.25);
+            this.flashT = 0.18;
+            this.fx.burst(this.player.x + this.player.w / 2,
+                          this.player.y + this.player.h / 2,
+                          1.2, ["#00f5ff", "#ffffff"]);
+            this.audio.hit();
+          }
+        }
+      }
+    }
+
+    // Enemies vs player (collision damage)
+    if (this.player.alive) {
+      for (const e of this.enemies) {
+        if (!e.alive) continue;
+        if (aabb(e, this.player)) {
+          e.alive = false;
+          this._onEnemyKilled(e);
+          if (this.player.hit()) {
+            this.shake.trigger(CFG.SHAKE.BIG, 0.4);
+            this.flashT = 0.25;
+            this.audio.hit();
+          }
+        }
+      }
+    }
+
+    // Power-ups vs player
+    if (this.player.alive) {
+      for (const p of this.powerups) {
+        if (p.dead) continue;
+        if (aabb(p, this.player)) {
+          p.dead = true;
+          this._applyPowerup(p.kind);
+        }
+      }
+    }
+  }
+
+  _onEnemyKilled(e) {
+    const cx = e.x + e.w / 2;
+    const cy = e.y + e.h / 2;
+    const isBoss = e instanceof Boss;
+    this.audio.explosion(isBoss ? 2.2 : (e.kind === "tank" ? 1.4 : 1));
+    this.shake.trigger(
+      isBoss ? CFG.SHAKE.BOSS :
+      e.kind === "tank" ? CFG.SHAKE.MEDIUM :
+      e.kind === "bomber" ? CFG.SHAKE.MEDIUM :
+                            CFG.SHAKE.SMALL,
+      isBoss ? 0.9 : 0.18
+    );
+    this.fx.burst(cx, cy, isBoss ? 3.5 : (e.h / 30 + 0.7), isBoss
+      ? ["#ff00ff", "#ffe14a", "#00f5ff", "#ffffff"]
+      : ["#ff2bd1", "#ffe14a", "#00f5ff", "#ffffff"]);
+    // Debris shards — bigger ones for bigger ships
+    const debrisCount = isBoss ? 28 : (e.kind === "tank" ? 14 : e.kind === "bomber" ? 10 : 6);
+    for (let i = 0; i < debrisCount; i++) {
+      this.fx.list.push(new Particle(cx, cy, {
+        life: rnd(0.8, 1.6),
+        size: rnd(1.5, isBoss ? 4 : 2.5),
+        speed: rnd(120, 380),
+        gravity: 220,
+        drag: 0.6,
+        color: pick([e.color, e.edgeColor, "#ffffff"]),
+        shape: "rect",
+      }));
+    }
+    this.score = (this.score || 0) + (e.score || 0);
+    if (!Number.isFinite(this.score)) this.score = 0;
+    this.flashT = Math.max(this.flashT, 0.06);
+
+    if (isBoss) {
+      this.bossActive = false;
+      this.bossSpawned = false;
+      this.audio.victory();
+      this.waveIncoming = true;
+      this.waveTimer = CFG.WAVE.INTER_DELAY;
+      this.waveIncomingT = 1.6;
+    } else {
+      // Drop a chance-based power-up
+      this._dropPowerup(cx, cy);
+    }
+  }
+
+  _applyPowerup(kind) {
+    if (kind === "multi")  this.player.powerups.multi   = CFG.POWER.MULTI_DUR;
+    if (kind === "rapid")  this.player.powerups.rapid   = CFG.POWER.RAPID_DUR;
+    if (kind === "shield") this.player.powerups.shield  = CFG.POWER.SHIELD_DUR;
+    this.audio.powerup(kind);
+    this.fx.burst(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2, 0.8, ["#ffe14a", "#ffffff"]);
+  }
+
+  // ---------- Rendering ----------
+  render() {
+    const ctx = this.ctx;
+    ctx.save();
+    // Apply screen shake by translating the context
+    this.shake.apply(ctx);
+    // Also factor in HUD edge bump from flash
+    const edgePulse = this.flashT > 0 ? Math.sin(this.flashT * 60) * 0.5 + 0.5 : 0;
+    ctx.translate(0, edgePulse * 0); // placeholder for visual jolt
+
+    // Background
+    this.bg.draw(ctx);
+
+    // Game entities
+    for (const p of this.powerups) p.draw(ctx);
+    for (const e of this.enemies)  e.draw(ctx);
+    this.player.draw(ctx);
+    for (const b of this.bullets)  b.draw(ctx);
+    for (const b of this.eBullets) b.draw(ctx);
+
+    // Particle FX on top
+    this.fx.draw(ctx);
+
+    // Damage flash — red overlay
+    if (this.flashT > 0) {
+      ctx.globalAlpha = clamp(this.flashT * 1.5, 0, 0.35);
+      ctx.fillStyle = "#ff2bd1";
+      ctx.fillRect(0, 0, CFG.W, CFG.H);
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    this._drawHUD(ctx);
+
+    // Overlays
+    if (this.state === "title")      this._drawTitle(ctx);
+    if (this.state === "paused")     this._drawPaused(ctx);
+    if (this.state === "gameover")   this._drawGameOver(ctx);
+    if (this.waveIncomingT > 0 && this.state === "playing") this._drawWaveBanner(ctx);
+
+    ctx.restore();
+  }
+
+  _drawHUD(ctx) {
+    const pad = 14;
+    const d = this._diff();
+    // Top-left score panel
+    ctx.save();
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = CFG.COLOR.player;
+
+    ctx.font = "bold 24px 'Courier New', monospace";
+    ctx.textAlign = "left";
+    ctx.fillStyle = CFG.COLOR.text;
+    ctx.fillText("SCORE  " + this.score.toString().padStart(6, "0"), pad, 30);
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(0,245,255,0.6)";
+    ctx.fillText("HI  " + (this.highScore || 0).toString().padStart(6, "0"), pad, 46);
+    ctx.fillText("WAVE  " + this.wave, pad, 62);
+
+    // Difficulty badge — sits under WAVE label, color-coded per preset
+    ctx.font = "bold 13px 'Courier New', monospace";
+    ctx.fillStyle = d.color;
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur = 10;
+    ctx.fillText(d.label, pad, 80);
+    ctx.shadowBlur = 0;
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.fillText("x" + d.scoreMul.toFixed(2) + " SCORE  ·  x" + d.enemyHp.toFixed(2) + " HP", pad, 94);
+
+    // Top-right lives
+    ctx.textAlign = "right";
+    ctx.font = "bold 18px 'Courier New', monospace";
+    ctx.fillStyle = CFG.COLOR.textAlt;
+    ctx.shadowColor = CFG.COLOR.textAlt;
+    ctx.fillText("LIVES", CFG.W - pad - 30, 30);
+    for (let i = 0; i < CFG.PLAYER.MAX_LIVES; i++) {
+      const filled = i < this.player.lives;
+      ctx.fillStyle = filled ? CFG.COLOR.health : "rgba(255,43,209,0.18)";
+      ctx.beginPath();
+      ctx.moveTo(CFG.W - pad - 100 + i * 26, 18);
+      ctx.lineTo(CFG.W - pad - 90 + i * 26, 18);
+      ctx.lineTo(CFG.W - pad - 95 + i * 26, 38);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Power-up timers (left side, near bottom)
+    let yPos = CFG.H - 80;
+    const drawBar = (label, time, max, color) => {
+      if (time <= 0) return;
+      const w = 110, h = 8;
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(pad, yPos, w, h);
+      ctx.fillStyle = color;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = color;
+      ctx.fillRect(pad, yPos, w * clamp(time / max, 0, 1), h);
+      ctx.shadowBlur = 0;
+      ctx.font = "bold 12px 'Courier New', monospace";
+      ctx.fillStyle = color;
+      ctx.textAlign = "left";
+      ctx.fillText(label, pad + w + 8, yPos + 8);
+      yPos -= 14;
+    };
+    drawBar("MULTI",  this.player.powerups.multi,  CFG.POWER.MULTI_DUR,  CFG.COLOR.powerupM);
+    drawBar("RAPID",  this.player.powerups.rapid,  CFG.POWER.RAPID_DUR,  CFG.COLOR.powerupR);
+    drawBar("SHIELD", this.player.powerups.shield, CFG.POWER.SHIELD_DUR, CFG.COLOR.powerupS);
+
+    // Boss HP bar
+    const boss = this.enemies.find(e => e.kind === "boss");
+    if (boss) {
+      const w = CFG.W - 200, h = 12;
+      const x = (CFG.W - w) / 2, y = 16;
+      ctx.font = "bold 12px 'Courier New', monospace";
+      ctx.fillStyle = "#ff00ff";
+      ctx.textAlign = "center";
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = "#ff00ff";
+      ctx.fillText("DREADNOUGHT  " + boss.kind.toUpperCase(), CFG.W / 2, y - 2);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(x, y + 4, w, h);
+      ctx.fillStyle = CFG.COLOR.boss;
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = CFG.COLOR.boss;
+      ctx.fillRect(x, y + 4, w * clamp(boss.hp / boss.maxHp, 0, 1), h);
+      ctx.strokeStyle = "rgba(255,0,255,0.7)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 4.5, w - 1, h - 1);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  }
+
+  _drawTitle(ctx) {
+    ctx.fillStyle = "rgba(5,0,20,0.55)";
+    ctx.fillRect(0, 0, CFG.W, CFG.H);
+
+    const tt = (Math.sin(this.endT * 2.2) + 1) / 2;
+    const cx = CFG.W / 2, cy = CFG.H / 2 - 80;
+
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = CFG.COLOR.gridHot;
+    ctx.fillStyle = lerpColor("#00f5ff", "#ff2bd1", tt);
+    ctx.font = "bold 64px 'Courier New', monospace";
+    ctx.fillText("NEON SKYLINE", cx, cy);
+    ctx.font = "bold 36px 'Courier New', monospace";
+    ctx.shadowColor = "#ff2bd1";
+    ctx.fillStyle = "#ff2bd1";
+    ctx.fillText("RETRO  SHOOTER", cx, cy + 48);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = CFG.COLOR.text;
+    ctx.font = "16px 'Courier New', monospace";
+    ctx.fillText("PRESS  SPACE  TO  LAUNCH", cx, cy + 110);
+
+    ctx.font = "13px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(0,245,255,0.75)";
+    // Two-column control table — label on left, key on right column
+    const cols = [
+      ["MOVE",       "ARROWS / WASD"],
+      ["FIRE",       "SPACE"],
+      ["PAUSE",      "P  /  ESC"],
+      ["RESTART",    "R"],
+      ["MUTE",       "M"],
+    ];
+    cols.forEach((row, i) => {
+      ctx.textAlign = "right";
+      ctx.fillStyle = "rgba(0,245,255,0.8)";
+      ctx.fillText(row[0], cx - 30, cy + 180 + i * 20);
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#ffe14a";
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = "#ffe14a";
+      ctx.fillText(row[1], cx + 20, cy + 180 + i * 20);
+      ctx.shadowBlur = 0;
+    });
+
+    ctx.restore();
+  }
+
+  _drawPaused(ctx) {
+    ctx.fillStyle = "rgba(5,0,20,0.65)";
+    ctx.fillRect(0, 0, CFG.W, CFG.H);
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = CFG.COLOR.gridHot;
+    ctx.fillStyle = "#00f5ff";
+    ctx.font = "bold 60px 'Courier New', monospace";
+    ctx.fillText("PAUSED", CFG.W / 2, CFG.H / 2 - 10);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ff2bd1";
+    ctx.font = "bold 18px 'Courier New', monospace";
+    ctx.fillText("PRESS  P / ESC  TO  RESUME", CFG.W / 2, CFG.H / 2 + 36);
+    ctx.restore();
+  }
+
+  _drawWaveBanner(ctx) {
+    const t = 1 - (this.waveIncomingT / 1.4);
+    const alpha = clamp(Math.sin(t * Math.PI), 0, 1);
+    if (alpha <= 0) return;
+    const d = this._diff();
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = "#ff2bd1";
+    ctx.fillStyle = "#ff2bd1";
+    ctx.font = "bold 52px 'Courier New', monospace";
+    if (this.wave % d.bossEvery === 0 && this.wave > 0) {
+      ctx.fillText("WAVE " + this.wave + "  ·  INCOMING", CFG.W / 2, CFG.H / 2 - 10);
+    } else {
+      ctx.fillText("WAVE  " + this.wave + "  ·  INCOMING", CFG.W / 2, CFG.H / 2 - 10);
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  _drawGameOver(ctx) {
+    ctx.fillStyle = "rgba(5,0,20,0.72)";
+    ctx.fillRect(0, 0, CFG.W, CFG.H);
+    const d = this._diff();
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = "#ff2bd1";
+    ctx.fillStyle = "#ff2bd1";
+    ctx.font = "bold 68px 'Courier New', monospace";
+    ctx.fillText("GAME  OVER", CFG.W / 2, CFG.H / 2 - 30);
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#00f5ff";
+    ctx.fillStyle = "#00f5ff";
+    ctx.font = "bold 24px 'Courier New', monospace";
+    ctx.fillText("SCORE  " + this.score.toString().padStart(6, "0"), CFG.W / 2, CFG.H / 2 + 20);
+    ctx.font = "bold 18px 'Courier New', monospace";
+    ctx.fillStyle = "#ffe14a";
+    ctx.fillText("HI  " + (this.highScore || 0).toString().padStart(6, "0"), CFG.W / 2, CFG.H / 2 + 50);
+    // Difficulty + score-multiplier replayed here so users see what they ran
+    ctx.font = "bold 14px 'Courier New', monospace";
+    ctx.fillStyle = d.color;
+    ctx.shadowColor = d.color;
+    ctx.fillText("MODE  " + d.label + "  ·  x" + d.scoreMul.toFixed(2) + " SCORE", CFG.W / 2, CFG.H / 2 + 75);
+    ctx.shadowBlur = 0;
+    ctx.font = "16px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(0,245,255,0.9)";
+    ctx.fillText("PRESS  R  OR  SPACE  TO  RESTART", CFG.W / 2, CFG.H / 2 + 105);
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(0,245,255,0.55)";
+    ctx.fillText("ESC  TO  CHANGE  DIFFICULTY", CFG.W / 2, CFG.H / 2 + 125);
+    ctx.restore();
+  }
+}
+
+/* Helper — hex color blend */
+function lerpColor(a, b, t) {
+  const ah = parseInt(a.slice(1), 16);
+  const bh = parseInt(b.slice(1), 16);
+  const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+  const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+  const r  = Math.round(lerp(ar, br, t));
+  const g  = Math.round(lerp(ag, bg, t));
+  const bl = Math.round(lerp(ab, bb, t));
+  return `rgb(${r},${g},${bl})`;
+}
+
+/* ============================================================
+   10. BOOT
+   ============================================================ */
+const canvas = document.getElementById("game");
+const game = new Game(canvas);
+game.lastTime = performance.now();
+requestAnimationFrame((t) => game.loop(t));
+
+// Expose for debugging (does not affect gameplay)
+window.RSS = { game, CFG };
+</script>
+</body>
+</html>

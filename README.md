@@ -18,16 +18,31 @@
 | ![Status](https://img.shields.io/badge/Status-In_Development-FF6B35?style=flat-square) | ![Stack](https://img.shields.io/badge/Stack-HTML5_Canvas-F7DF1E?style=flat-square&logo=javascript&logoColor=black) |
 | ![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square) | ![Deps](https://img.shields.io/badge/Dependencies-0-9CA3AF?style=flat-square) |
 
-### 🎮 조작 키 (예정)
+### 🎮 조작 키
 
 | 키 | 동작 |
 |---|---|
-| **← →** | 좌우 이동 |
-| **↑ ↓** | 전진 / 후진 |
+| **← → / WASD** | 좌우 / 상하 이동 |
 | **Space** | 레이저 발사 (홀드 자동 발사) |
-| **P** | 일시정지 / 재개 |
+| **P / Esc** | 일시정지 / 재개 |
 | **R** | 게임 오버 후 재시작 |
-| **Esc** | 일시정지 토글 |
+| **Esc** | 게임 오버 시 → 타이틀로 (난이도 변경) |
+| **1 · 2 · 3 · 4** | 타이틀 화면에서 난이도 직접 선택 |
+| **← → (타이틀)** | 난이도 순환 선택 |
+| **M** | 음소거 |
+
+### 🎚️ 난이도 (Difficulty)
+
+타이틀 화면의 4개 칩 또는 키보드 `1`–`4` / `←` `→` 으로 선택. 선택은 `localStorage` 에 저장되어 다음 접속 때 자동 복원.
+
+| Mode | Color | Lives | Score | Enemy HP | Speed | Fire-rate | Spawn | Boss-every | BPM |
+|---|---|---|---|---|---|---|---|---|---|
+| **ROOKIE** | cyan #7afcff | 4 | × 0.75 | × 0.60 | × 0.78 | × 0.70 | × 0.85 | wave 6 | 80 |
+| **NORMAL** | cyan #00f5ff | 3 | × 1.00 | × 1.00 | × 1.00 | × 1.00 | × 1.00 | wave 5 | 100 |
+| **HARD** | orange #ff8a00 | 3 | × 1.50 | × 1.40 | × 1.22 | × 1.30 | × 1.20 | wave 4 | 120 |
+| **INSANE** | pink #ff2bd1 | 2 | × 2.50 | × 2.00 | × 1.45 | × 1.65 | × 1.45 | wave 3 | 140 |
+
+난이도가 영향을 주는 항목: 플레이어 라이프·속도·연사속도, 적 HP·속도·발사속도·총알속도, 적 스폰 밀도, 보스 HP·총알속도·산탄 폭, 점수 배율, 파워업 드랍 확률, BGM 템포.
 
 ### 🎯 게임 목표
 
@@ -56,7 +71,8 @@
 | **스크린 쉐이크** | `ctx.translate(random_offset_x, random_offset_y)` 를 render loop에서 임시 적용 후 복원 |
 | **파티클 폭발** | 작은 원/선을 객체 배열로 관리, 시간 경과로 크기/투명도 감소, lifespan 만료 시 제거 |
 | **레이저 / 적 / 충돌** | AABB 충돌 검사 + 게임 루프 (requestAnimationFrame) |
-| **사운드** | Web Audio API로 합성 (선택 사항 — 외부 에셋 없이 8-bit 사운드) |
+| **난이도 스케일링** | `CFG.DIFFICULTY[rookie\|normal\|hard\|insane]` 의 13개 배율 (lives / scoreMul / enemyHp / enemySpd / spawnRate / fireRate / bossEvery / bossHp / bossBullet / spreadFan / musicBpm / dropMul) 을 모든 적·보스·플레이어·사운드 경로에서 `_diff()` 한 줄로 적용 |
+| **사운드** | Web Audio API로 절차 합성 — 난이도별 BPM (80/100/120/140) 로 배경음악 템포 변화 |
 
 ### 생성 환경
 
@@ -78,6 +94,7 @@
 - 👾 **다양한 적 함선** — 크기/색상/이동 패턴별 분류
 - 🏆 **점수 시스템** — 적 종류별 점수 + 최고점수 로컬 저장
 - ⏸️ **일시정지 / 재시작** — 부드러운 게임 흐름
+- 🎚️ **4단계 난이도 (Rookie / Normal / Hard / Insane)** — 적 HP·속도·보스 패턴·점수 배율·BGM 템포 모두 일괄 조정, 선택 `localStorage` 저장
 - 🎨 **클래식 신스웨이브 팔레트** — 핑크 #FF00FF + 시안 #00FFFF + 보라 #8B00FF + 검정
 - 🚀 **Zero-Dependency** — 외부 라이브러리 없이 단일 HTML 파일
 

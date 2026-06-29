@@ -1,0 +1,14 @@
+# OpenCode runtime cache (never commit — internal session state)
+.omo/
+
+# Local QA artifacts and screenshots
+/tmp/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor scratch
+.vscode/
+.idea/
+*.swp
