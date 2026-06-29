@@ -8,15 +8,17 @@
 
 ---
 
-## 🎬 라이브 데모 (Live Demo)
+## 🎬 [**라이브 데모 (Live Demo) — 지금 플레이**](https://retro-synthwave-shooter.vercel.app/)
 
-> 브라우저에서 바로 플레이 가능. GitHub 푸시 시 Vercel 자동 배포.
+브라우저에서 바로 플레이 가능. GitHub 푸시 시 Vercel 자동 배포.
+
+[**➡️ 지금 플레이: https://retro-synthwave-shooter.vercel.app/**](https://retro-synthwave-shooter.vercel.app/)
 
 | | |
 |---|---|
-| ![Demo](https://img.shields.io/badge/Live-Demo-7C3AED?style=for-the-badge&logo=vercel&logoColor=white) | [![Repo](https://img.shields.io/badge/GitHub-sigco3111%2Fretro--synthwave--shooter-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sigco3111/retro-synthwave-shooter) |
-| ![Status](https://img.shields.io/badge/Status-Live-22C55E?style=flat-square) | ![Stack](https://img.shields.io/badge/Stack-HTML5_Canvas-F7DF1E?style=flat-square&logo=javascript&logoColor=black) |
-| ![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square) | ![Deps](https://img.shields.io/badge/Dependencies-0-9CA3AF?style=flat-square) |
+| [![Live Demo](https://img.shields.io/badge/Live_Demo-지금_플레이-FF00FF?style=for-the-badge&logo=vercel&logoColor=white)](https://retro-synthwave-shooter.vercel.app/) | [![GitHub](https://img.shields.io/badge/GitHub-sigco3111%2Fretro--synthwave--shooter-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sigco3111/retro-synthwave-shooter) |
+| [![Status](https://img.shields.io/badge/Status-Live-22C55E?style=for-the-badge)](https://retro-synthwave-shooter.vercel.app/) | [![Stack](https://img.shields.io/badge/Stack-HTML5_Canvas-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://retro-synthwave-shooter.vercel.app/) |
+| [![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](https://retro-synthwave-shooter.vercel.app/) | [![Deps](https://img.shields.io/badge/Dependencies-0-9CA3AF?style=for-the-badge)](https://retro-synthwave-shooter.vercel.app/) |
 
 ### 🎮 조작 키
 
