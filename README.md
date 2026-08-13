@@ -10,13 +10,13 @@
 
 ## 🎬 [**라이브 데모 (Live Demo) — 지금 플레이**](https://sigco3111.github.io/retro-synthwave-shooter/)
 
-브라우저에서 바로 플레이 가능. GitHub 푸시 시 Vercel 자동 배포.
+브라우저에서 바로 플레이 가능. GitHub 푸시 시 GitHub Pages 자동 배포.
 
 [**➡️ 지금 플레이: https://sigco3111.github.io/retro-synthwave-shooter/**](https://sigco3111.github.io/retro-synthwave-shooter/)
 
 | | |
 |---|---|
-| [![Live Demo](https://img.shields.io/badge/Live_Demo-지금_플레이-FF00FF?style=for-the-badge&logo=vercel&logoColor=white)](https://sigco3111.github.io/retro-synthwave-shooter/) | [![GitHub](https://img.shields.io/badge/GitHub-sigco3111%2Fretro--synthwave--shooter-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sigco3111/retro-synthwave-shooter) |
+| [![Live Demo](https://img.shields.io/badge/Live_Demo-지금_플레이-222222?style=for-the-badge&logo=githubpages&logoColor=white)](https://sigco3111.github.io/retro-synthwave-shooter/) | [![GitHub](https://img.shields.io/badge/GitHub-sigco3111%2Fretro--synthwave--shooter-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sigco3111/retro-synthwave-shooter) |
 | [![Status](https://img.shields.io/badge/Status-Live-22C55E?style=for-the-badge)](https://sigco3111.github.io/retro-synthwave-shooter/) | [![Stack](https://img.shields.io/badge/Stack-HTML5_Canvas-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://sigco3111.github.io/retro-synthwave-shooter/) |
 | [![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](https://sigco3111.github.io/retro-synthwave-shooter/) | [![Deps](https://img.shields.io/badge/Dependencies-0-9CA3AF?style=for-the-badge)](https://sigco3111.github.io/retro-synthwave-shooter/) |
 
@@ -115,9 +115,9 @@ python3 -m http.server 8000
 # → http://localhost:8000 접속
 ```
 
-### 라이브 데모 (Vercel 자동 배포)
+### 라이브 데모 (GitHub Pages 자동 배포)
 
-GitHub에 푸시되면 Vercel이 자동으로 빌드하여 `https://sigco3111.github.io/retro-synthwave-shooter/` 에 배포합니다.
+GitHub에 푸시되면 GitHub Actions가 자동으로 빌드하여 `https://sigco3111.github.io/retro-synthwave-shooter/` 에 배포합니다.
 
 ---
 
@@ -131,7 +131,7 @@ GitHub에 푸시되면 Vercel이 자동으로 빌드하여 `https://sigco3111.gi
 | **게임 루프** | `requestAnimationFrame` + 델타타임 |
 | **사운드** | Web Audio API (선택) |
 | **빌드** | 불필요 (단일 HTML) |
-| **배포** | Vercel (GitHub 푸시 시 자동) |
+| **배포** | GitHub Pages (main push → gh-pages 자동) |
 
 ---
 
